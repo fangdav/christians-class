@@ -40,7 +40,7 @@ export function CreateQuarterModal({ open, onOpenChange }: CreateQuarterModalPro
     const { error } = await supabase.from("quarters").insert([formData])
 
     if (error) {
-      console.error("[v0] Error creating quarter:", error)
+      console.error("Error creating quarter:", error)
       alert("Failed to create quarter. Please try again.")
     } else {
       setFormData({ name: "", start_date: "", end_date: "" })

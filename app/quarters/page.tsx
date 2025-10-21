@@ -14,7 +14,7 @@ export default async function QuartersPage() {
     .order("start_date", { ascending: false })
 
   if (error) {
-    console.error("[v0] Error fetching quarters:", error)
+    console.error("Error fetching quarters:", error)
   }
 
   return (

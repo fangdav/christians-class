@@ -87,7 +87,7 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       // Also refresh parent view data for absence minutes
       await onUpdate()
     } catch (error) {
-      console.error("[v0] Error checking out:", error)
+      console.error("Error checking out:", error)
     } finally {
       setIsLoading(false)
     }
@@ -130,7 +130,7 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       // Also refresh parent view data for absence minutes
       await onUpdate()
     } catch (error) {
-      console.error("[v0] Error checking in:", error)
+      console.error("Error checking in:", error)
     } finally {
       setIsLoading(false)
     }

@@ -44,7 +44,7 @@ export function AttendancePanel({ session, students, onUpdate }: AttendancePanel
       // Wait for update to complete before re-enabling buttons
       await onUpdate()
     } catch (error) {
-      console.error("[v0] Error marking attendance:", error)
+      console.error("Error marking attendance:", error)
     } finally {
       setIsLoading(false)
     }

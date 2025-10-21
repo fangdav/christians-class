@@ -38,7 +38,7 @@ export function ContributionsPanel({ session, students, onUpdate }: Contribution
       // Wait for update to complete before re-enabling buttons
       await onUpdate()
     } catch (error) {
-      console.error("[v0] Error adding contribution:", error)
+      console.error("Error adding contribution:", error)
     } finally {
       setIsLoading(false)
     }

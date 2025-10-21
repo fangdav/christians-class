@@ -50,7 +50,7 @@ export function CreateSessionModal({ open, onOpenChange, quarterId }: CreateSess
     ])
 
     if (error) {
-      console.error("[v0] Error creating session:", error)
+      console.error("Error creating session:", error)
       alert("Failed to create session. Please try again.")
     } else {
       setFormData({ session_number: "", session_date: "", start_time: "09:00", end_time: "11:00" })
