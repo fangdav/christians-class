@@ -45,7 +45,7 @@ SELECT
 
 FROM quarters q
 LEFT JOIN quarter_enrollments qe ON q.id = qe.quarter_id
-LEFT JOIN users u ON qe.user_id = u.id AND u.deleted_at IS NULL
+INNER JOIN users u ON qe.user_id = u.id AND u.deleted_at IS NULL
 LEFT JOIN sessions s ON q.id = s.quarter_id AND s.deleted_at IS NULL
 LEFT JOIN check_ins ci ON u.id = ci.user_id AND s.id = ci.session_id
 LEFT JOIN contributions c ON u.id = c.user_id AND s.id = c.session_id
@@ -67,7 +67,7 @@ SELECT
 
   -- Attendance percentage
   CASE
-    WHEN COUNT(DISTINCT s.id) > 0 THEN
+  WHEN COUNT(DISTINCT s.id) > 0 THEN
       ROUND(
         (COUNT(DISTINCT ci.session_id)::numeric / COUNT(DISTINCT s.id)::numeric) * 100,
         1

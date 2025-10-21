@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -14,7 +15,7 @@ import type {
   QuarterStudentAttendance,
   QuarterStudentContributions,
 } from "@/lib/types/database"
-import { Users, Calendar, TrendingUp, TrendingDown } from "lucide-react"
+import { Users, Calendar, TrendingUp, TrendingDown, Search } from "lucide-react"
 
 interface ReportsModalProps {
   open: boolean
@@ -28,6 +29,15 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
   const [attendanceData, setAttendanceData] = useState<QuarterStudentAttendance[]>([])
   const [contributionsData, setContributionsData] = useState<QuarterStudentContributions[]>([])
   const [isLoading, setIsLoading] = useState(false)
+
+  // Attendance filters and sort
+  const [attendanceSearch, setAttendanceSearch] = useState("")
+  const [attendanceStatusFilter, setAttendanceStatusFilter] = useState<string>("all")
+  const [attendanceSortBy, setAttendanceSortBy] = useState<string>("name")
+
+  // Contributions filters and sort
+  const [contributionsSearch, setContributionsSearch] = useState("")
+  const [contributionsSortBy, setContributionsSortBy] = useState<string>("name")
 
   useEffect(() => {
     if (open) {
@@ -97,6 +107,83 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
 
     setIsLoading(false)
   }
+
+  // Filtered and sorted attendance data
+  const filteredAttendanceData = useMemo(() => {
+    let filtered = [...attendanceData]
+
+    // Apply search filter
+    if (attendanceSearch) {
+      filtered = filtered.filter((student) =>
+        student.full_name.toLowerCase().includes(attendanceSearch.toLowerCase())
+      )
+    }
+
+    // Apply status filter
+    if (attendanceStatusFilter !== "all") {
+      filtered = filtered.filter((student) => student.attendance_status === attendanceStatusFilter)
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (attendanceSortBy) {
+        case "name":
+          return a.full_name.localeCompare(b.full_name)
+        case "attendance_asc":
+          return a.attendance_percentage - b.attendance_percentage
+        case "attendance_desc":
+          return b.attendance_percentage - a.attendance_percentage
+        case "sessions_asc":
+          return a.sessions_attended - b.sessions_attended
+        case "sessions_desc":
+          return b.sessions_attended - a.sessions_attended
+        case "time_remaining_asc":
+          return a.time_remaining - b.time_remaining
+        case "time_remaining_desc":
+          return b.time_remaining - a.time_remaining
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [attendanceData, attendanceSearch, attendanceStatusFilter, attendanceSortBy])
+
+  // Filtered and sorted contributions data
+  const filteredContributionsData = useMemo(() => {
+    let filtered = [...contributionsData]
+
+    // Apply search filter
+    if (contributionsSearch) {
+      filtered = filtered.filter((student) =>
+        student.full_name.toLowerCase().includes(contributionsSearch.toLowerCase())
+      )
+    }
+
+    // Apply sorting
+    filtered.sort((a, b) => {
+      switch (contributionsSortBy) {
+        case "name":
+          return a.full_name.localeCompare(b.full_name)
+        case "total_asc":
+          return a.total_contributions - b.total_contributions
+        case "total_desc":
+          return b.total_contributions - a.total_contributions
+        case "avg_per_session_asc":
+          return a.avg_contributions_per_session - b.avg_contributions_per_session
+        case "avg_per_session_desc":
+          return b.avg_contributions_per_session - a.avg_contributions_per_session
+        case "avg_rating_asc":
+          return (a.avg_contribution_rating || 0) - (b.avg_contribution_rating || 0)
+        case "avg_rating_desc":
+          return (b.avg_contribution_rating || 0) - (a.avg_contribution_rating || 0)
+        default:
+          return 0
+      }
+    })
+
+    return filtered
+  }, [contributionsData, contributionsSearch, contributionsSortBy])
 
   const getAttendanceStatusColor = (status: string) => {
     switch (status) {
@@ -222,13 +309,57 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
                   <CardDescription>Attendance rates for all students in this quarter</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Filter and Sort Controls */}
+                  <div className="flex gap-3 mb-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by name..."
+                          value={attendanceSearch}
+                          onChange={(e) => setAttendanceSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    <Select value={attendanceStatusFilter} onValueChange={setAttendanceStatusFilter}>
+                      <SelectTrigger className="w-[140px]">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">All Status</SelectItem>
+                        <SelectItem value="good">Good</SelectItem>
+                        <SelectItem value="warning">Warning</SelectItem>
+                        <SelectItem value="danger">At Risk</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={attendanceSortBy} onValueChange={setAttendanceSortBy}>
+                      <SelectTrigger className="w-[180px]">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Name (A-Z)</SelectItem>
+                        <SelectItem value="attendance_desc">Attendance % (High-Low)</SelectItem>
+                        <SelectItem value="attendance_asc">Attendance % (Low-High)</SelectItem>
+                        <SelectItem value="sessions_desc">Sessions (Most-Least)</SelectItem>
+                        <SelectItem value="sessions_asc">Sessions (Least-Most)</SelectItem>
+                        <SelectItem value="time_remaining_desc">Time Remaining (Most-Least)</SelectItem>
+                        <SelectItem value="time_remaining_asc">Time Remaining (Least-Most)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {attendanceData.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       No attendance data available for this quarter.
                     </p>
+                  ) : filteredAttendanceData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No students match your filters.
+                    </p>
                   ) : (
                     <div className="space-y-3">
-                      {attendanceData.map((student) => {
+                      {filteredAttendanceData.map((student) => {
                         const timeRemainingStatus =
                           student.time_remaining > 30 * student.total_sessions_in_quarter
                             ? "text-green-600"
@@ -281,13 +412,46 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
                   <CardDescription>Contribution stats for all students in this quarter</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {/* Filter and Sort Controls */}
+                  <div className="flex gap-3 mb-4">
+                    <div className="flex-1">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          placeholder="Search by name..."
+                          value={contributionsSearch}
+                          onChange={(e) => setContributionsSearch(e.target.value)}
+                          className="pl-9"
+                        />
+                      </div>
+                    </div>
+                    <Select value={contributionsSortBy} onValueChange={setContributionsSortBy}>
+                      <SelectTrigger className="w-[200px]">
+                        <SelectValue placeholder="Sort by" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="name">Name (A-Z)</SelectItem>
+                        <SelectItem value="total_desc">Total Contributions (High-Low)</SelectItem>
+                        <SelectItem value="total_asc">Total Contributions (Low-High)</SelectItem>
+                        <SelectItem value="avg_per_session_desc">Avg per Session (High-Low)</SelectItem>
+                        <SelectItem value="avg_per_session_asc">Avg per Session (Low-High)</SelectItem>
+                        <SelectItem value="avg_rating_desc">Avg Rating (High-Low)</SelectItem>
+                        <SelectItem value="avg_rating_asc">Avg Rating (Low-High)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   {contributionsData.length === 0 ? (
                     <p className="text-sm text-muted-foreground text-center py-4">
                       No contribution data available for this quarter.
                     </p>
+                  ) : filteredContributionsData.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      No students match your search.
+                    </p>
                   ) : (
                     <div className="space-y-3">
-                      {contributionsData.map((student) => (
+                      {filteredContributionsData.map((student) => (
                         <div
                           key={student.user_id}
                           className="flex items-center justify-between p-3 border border-border rounded-lg"
