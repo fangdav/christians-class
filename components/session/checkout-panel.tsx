@@ -10,7 +10,7 @@ import { LogOut, LogIn } from "lucide-react"
 interface CheckOutPanelProps {
   session: Session
   students: StudentSessionSummary[]
-  onUpdate: () => void
+  onUpdate: () => void | Promise<void>
 }
 
 export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProps) {
@@ -28,7 +28,9 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       })
 
       if (error) throw error
-      onUpdate()
+      // Add delay to allow database view to update, then refresh
+      await new Promise(resolve => setTimeout(resolve, 150))
+      await onUpdate()
     } catch (error) {
       console.error("[v0] Error checking out:", error)
     } finally {
@@ -70,7 +72,9 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
         if (updateError) throw updateError
       }
 
-      onUpdate()
+      // Add delay to allow database view to update, then refresh
+      await new Promise(resolve => setTimeout(resolve, 150))
+      await onUpdate()
     } catch (error) {
       console.error("[v0] Error checking in:", error)
     } finally {
@@ -122,7 +126,7 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
                     </Badge>
                   )}
                   <span className="text-sm text-muted-foreground">
-                    {student.total_absence_minutes} min absent • {student.time_remaining} min remaining
+                    {student.total_absence_minutes ?? 0} min absent • {student.time_remaining ?? 0} min remaining
                   </span>
                   {isCheckedOut && checkoutTime && (
                     <span className="text-sm text-muted-foreground">• Out since {checkoutTime}</span>

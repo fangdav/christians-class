@@ -255,9 +255,9 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
                                   {student.sessions_missing} missing
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
-                                  {student.total_absence_minutes} min absent •{" "}
+                                  {student.total_absence_minutes ?? 0} min absent •{" "}
                                   <span className={`font-medium ${timeRemainingStatus}`}>
-                                    {student.time_remaining} min remaining
+                                    {student.time_remaining ?? 0} min remaining
                                   </span>
                                 </div>
                               </div>

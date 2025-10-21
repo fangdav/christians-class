@@ -1,8 +1,13 @@
 -- Analytics Views for Quarter-Specific Reporting
 -- These views power the analytics dashboard
 
+-- Drop existing views first to allow column reordering
+DROP VIEW IF EXISTS quarter_student_contributions;
+DROP VIEW IF EXISTS quarter_student_attendance;
+DROP VIEW IF EXISTS quarter_overview_stats;
+
 -- View: Quarter overview statistics
-CREATE OR REPLACE VIEW quarter_overview_stats AS
+CREATE VIEW quarter_overview_stats AS
 SELECT
   q.id AS quarter_id,
   q.name AS quarter_name,
@@ -48,7 +53,7 @@ WHERE q.deleted_at IS NULL
 GROUP BY q.id, q.name, q.start_date, q.end_date;
 
 -- View: Student attendance by quarter
-CREATE OR REPLACE VIEW quarter_student_attendance AS
+CREATE VIEW quarter_student_attendance AS
 SELECT
   q.id AS quarter_id,
   u.id AS user_id,
@@ -76,7 +81,7 @@ SELECT
   COUNT(DISTINCT CASE WHEN ci.status = 'missing' THEN ci.session_id END) AS sessions_missing,
 
   -- Total absence minutes
-  SUM(COALESCE(ci.minutes_late, 0)) AS total_late_minutes,
+  COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) AS total_late_minutes,
 
   -- Total checkout minutes across all sessions
   COALESCE(
@@ -91,7 +96,7 @@ SELECT
   ) AS total_checkout_minutes,
 
   -- Total absence (late + checkout)
-  SUM(COALESCE(ci.minutes_late, 0)) + COALESCE(
+  COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) + COALESCE(
     (SELECT SUM(duration_minutes)
      FROM check_outs co
      JOIN sessions s2 ON co.session_id = s2.id
@@ -104,7 +109,7 @@ SELECT
 
   -- Time remaining (45 min per session * total sessions - total absence)
   (45 * COUNT(DISTINCT s.id)) - (
-    SUM(COALESCE(ci.minutes_late, 0)) + COALESCE(
+    COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) + COALESCE(
       (SELECT SUM(duration_minutes)
        FROM check_outs co
        JOIN sessions s2 ON co.session_id = s2.id
@@ -135,7 +140,7 @@ WHERE q.deleted_at IS NULL
 GROUP BY q.id, u.id, u.full_name, u.email, u.student_id;
 
 -- View: Student contributions by quarter
-CREATE OR REPLACE VIEW quarter_student_contributions AS
+CREATE VIEW quarter_student_contributions AS
 SELECT
   q.id AS quarter_id,
   u.id AS user_id,
