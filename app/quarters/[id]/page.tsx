@@ -17,6 +17,7 @@ export default async function QuarterDetailPage({ params }: { params: Promise<{ 
     .from("sessions")
     .select("*")
     .eq("quarter_id", id)
+    .is("deleted_at", null)
     .order("session_number", { ascending: true })
 
   const { data: enrollments } = await supabase.from("quarter_enrollments").select("*, users(*)").eq("quarter_id", id)

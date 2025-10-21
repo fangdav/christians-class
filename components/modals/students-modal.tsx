@@ -5,8 +5,19 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Button } from "@/components/ui/button"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { User } from "@/lib/types/database"
-import { Plus, UserIcon } from "lucide-react"
+import { Plus, UserIcon, Pencil, Trash2 } from "lucide-react"
 import { CreateStudentModal } from "./create-student-modal"
+import { EditStudentModal } from "./edit-student-modal"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface StudentsModalProps {
   open: boolean
@@ -17,6 +28,11 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
   const [students, setStudents] = useState<User[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedStudent, setSelectedStudent] = useState<User | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [studentToDelete, setStudentToDelete] = useState<User | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   useEffect(() => {
     if (open) {
@@ -28,12 +44,50 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
     setIsLoading(true)
     const supabase = getSupabaseBrowserClient()
 
-    const { data, error } = await supabase.from("users").select("*").order("full_name", { ascending: true })
+    const { data, error } = await supabase
+      .from("users")
+      .select("*")
+      .is("deleted_at", null)
+      .order("full_name", { ascending: true })
 
     if (!error && data) {
       setStudents(data)
     }
     setIsLoading(false)
+  }
+
+  const handleEdit = (student: User) => {
+    setSelectedStudent(student)
+    setShowEditModal(true)
+  }
+
+  const handleDeleteClick = (student: User) => {
+    setStudentToDelete(student)
+    setShowDeleteDialog(true)
+  }
+
+  const handleDeleteConfirm = async () => {
+    if (!studentToDelete) return
+
+    setIsDeleting(true)
+    const supabase = getSupabaseBrowserClient()
+
+    try {
+      const { error } = await supabase
+        .from("users")
+        .update({ deleted_at: new Date().toISOString() })
+        .eq("id", studentToDelete.id)
+
+      if (error) throw error
+
+      setShowDeleteDialog(false)
+      setStudentToDelete(null)
+      fetchStudents()
+    } catch (err) {
+      console.error("Failed to delete student:", err)
+    } finally {
+      setIsDeleting(false)
+    }
   }
 
   return (
@@ -74,6 +128,19 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
                         </p>
                       </div>
                     </div>
+                    <div className="flex items-center gap-2">
+                      <Button size="icon" variant="ghost" onClick={() => handleEdit(student)} title="Edit student">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        onClick={() => handleDeleteClick(student)}
+                        title="Delete student"
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -89,6 +156,42 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
           if (!open) fetchStudents()
         }}
       />
+
+      {selectedStudent && (
+        <EditStudentModal
+          open={showEditModal}
+          onOpenChange={(open) => {
+            setShowEditModal(open)
+            if (!open) {
+              setSelectedStudent(null)
+              fetchStudents()
+            }
+          }}
+          student={selectedStudent}
+        />
+      )}
+
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Student</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{studentToDelete?.full_name}"? This will mark the student as deleted but
+              preserve all associated data.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteConfirm}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   )
 }

@@ -5,6 +5,7 @@ export type Quarter = {
   end_date: string
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 export type Session = {
@@ -17,6 +18,7 @@ export type Session = {
   is_completed: boolean
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 export type User = {
@@ -26,6 +28,7 @@ export type User = {
   student_id: string
   created_at: string
   updated_at: string
+  deleted_at: string | null
 }
 
 export type QuarterEnrollment = {
@@ -108,4 +111,49 @@ export type StudentQuarterSummary = {
   total_contributions: number
   average_contribution_quality: number | null
   overall_status: AttendanceStatus
+}
+
+// Analytics View Types
+
+export type QuarterOverviewStats = {
+  quarter_id: string
+  quarter_name: string
+  start_date: string
+  end_date: string
+  total_students: number
+  total_sessions: number
+  completed_sessions: number
+  avg_attendance_rate: number
+  avg_contributions_per_student_session: number
+}
+
+export type QuarterStudentAttendance = {
+  quarter_id: string
+  user_id: string
+  full_name: string
+  email: string
+  student_id: string
+  total_sessions_in_quarter: number
+  sessions_attended: number
+  attendance_percentage: number
+  sessions_on_time: number
+  sessions_late: number
+  sessions_missing: number
+  total_late_minutes: number
+  attendance_status: AttendanceStatus | "unknown"
+}
+
+export type QuarterStudentContributions = {
+  quarter_id: string
+  user_id: string
+  full_name: string
+  email: string
+  student_id: string
+  total_contributions: number
+  total_sessions_in_quarter: number
+  avg_contributions_per_session: number
+  avg_contribution_rating: number | null
+  low_quality_count: number
+  medium_quality_count: number
+  high_quality_count: number
 }

@@ -17,17 +17,18 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import { useRouter } from "next/navigation"
-import type { Quarter } from "@/lib/types/database"
+import type { User, Quarter } from "@/lib/types/database"
 
-interface CreateStudentModalProps {
+interface EditStudentModalProps {
   open: boolean
   onOpenChange: (open: boolean) => void
+  student: User
 }
 
-export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalProps) {
-  const [fullName, setFullName] = useState("")
-  const [email, setEmail] = useState("")
-  const [studentId, setStudentId] = useState("")
+export function EditStudentModal({ open, onOpenChange, student }: EditStudentModalProps) {
+  const [fullName, setFullName] = useState(student.full_name)
+  const [email, setEmail] = useState(student.email)
+  const [studentId, setStudentId] = useState(student.student_id)
   const [quarterId, setQuarterId] = useState("")
   const [quarters, setQuarters] = useState<Quarter[]>([])
   const [isLoading, setIsLoading] = useState(false)
@@ -36,24 +37,40 @@ export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalPro
 
   useEffect(() => {
     if (open) {
-      fetchQuarters()
+      // Reset form with current student data
+      setFullName(student.full_name)
+      setEmail(student.email)
+      setStudentId(student.student_id)
+      fetchQuartersAndEnrollment()
     }
-  }, [open])
+  }, [open, student])
 
-  const fetchQuarters = async () => {
+  const fetchQuartersAndEnrollment = async () => {
     const supabase = getSupabaseBrowserClient()
-    const { data, error } = await supabase
+
+    // Fetch all active quarters
+    const { data: quartersData, error: quartersError } = await supabase
       .from("quarters")
       .select("*")
       .is("deleted_at", null)
       .order("start_date", { ascending: false })
 
-    if (!error && data) {
-      setQuarters(data)
-      // Auto-select the first (most recent) quarter if available
-      if (data.length > 0 && !quarterId) {
-        setQuarterId(data[0].id)
-      }
+    if (!quartersError && quartersData) {
+      setQuarters(quartersData)
+    }
+
+    // Fetch current enrollment
+    const { data: enrollmentData, error: enrollmentError } = await supabase
+      .from("quarter_enrollments")
+      .select("quarter_id")
+      .eq("user_id", student.id)
+      .single()
+
+    if (!enrollmentError && enrollmentData) {
+      setQuarterId(enrollmentData.quarter_id)
+    } else if (quartersData && quartersData.length > 0) {
+      // Default to first quarter if no enrollment found
+      setQuarterId(quartersData[0].id)
     }
   }
 
@@ -65,36 +82,40 @@ export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalPro
     const supabase = getSupabaseBrowserClient()
 
     try {
-      // First, insert the user
-      const { data: userData, error: insertError } = await supabase
+      // Update user information
+      const { error: updateError } = await supabase
         .from("users")
-        .insert({
+        .update({
           full_name: fullName,
           email,
           student_id: studentId,
+          updated_at: new Date().toISOString(),
         })
-        .select()
-        .single()
+        .eq("id", student.id)
 
-      if (insertError) throw insertError
+      if (updateError) throw updateError
 
-      // Then, create the quarter enrollment
+      // Update quarter enrollment (delete old, insert new)
+      // First, delete existing enrollments
+      const { error: deleteError } = await supabase
+        .from("quarter_enrollments")
+        .delete()
+        .eq("user_id", student.id)
+
+      if (deleteError) throw deleteError
+
+      // Then, create new enrollment
       const { error: enrollmentError } = await supabase.from("quarter_enrollments").insert({
-        user_id: userData.id,
+        user_id: student.id,
         quarter_id: quarterId,
       })
 
       if (enrollmentError) throw enrollmentError
 
-      // Reset form
-      setFullName("")
-      setEmail("")
-      setStudentId("")
-      setQuarterId(quarters[0]?.id || "")
       onOpenChange(false)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to add student")
+      setError(err instanceof Error ? err.message : "Failed to update student")
     } finally {
       setIsLoading(false)
     }
@@ -104,8 +125,8 @@ export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalPro
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
-          <DialogTitle>Add Student</DialogTitle>
-          <DialogDescription>Add a new student to the system.</DialogDescription>
+          <DialogTitle>Edit Student</DialogTitle>
+          <DialogDescription>Update the student information and quarter enrollment.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-4 py-4">
@@ -155,9 +176,6 @@ export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalPro
                   ))}
                 </SelectContent>
               </Select>
-              {quarters.length === 0 && (
-                <p className="text-sm text-muted-foreground">No quarters available. Please create a quarter first.</p>
-              )}
             </div>
             {error && <p className="text-sm text-destructive">{error}</p>}
           </div>
@@ -165,8 +183,8 @@ export function CreateStudentModal({ open, onOpenChange }: CreateStudentModalPro
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
               Cancel
             </Button>
-            <Button type="submit" disabled={isLoading || quarters.length === 0}>
-              {isLoading ? "Adding..." : "Add Student"}
+            <Button type="submit" disabled={isLoading}>
+              {isLoading ? "Updating..." : "Update Student"}
             </Button>
           </DialogFooter>
         </form>
