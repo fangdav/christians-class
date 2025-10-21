@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Session, StudentSessionSummary } from "@/lib/types/database"
-import { Check, X, Clock } from "lucide-react"
+import { Check, X, Clock, FileCheck } from "lucide-react"
 
 interface AttendancePanelProps {
   session: Session
@@ -16,7 +16,7 @@ interface AttendancePanelProps {
 export function AttendancePanel({ session, students, onUpdate }: AttendancePanelProps) {
   const [isLoading, setIsLoading] = useState(false)
 
-  const markAttendance = async (userId: string, status: "on_time" | "late" | "missing") => {
+  const markAttendance = async (userId: string, status: "on_time" | "late" | "missing" | "excused_absence") => {
     setIsLoading(true)
     const supabase = getSupabaseBrowserClient()
 
@@ -60,6 +60,8 @@ export function AttendancePanel({ session, students, onUpdate }: AttendancePanel
         return <Badge className="bg-yellow-600">Late</Badge>
       case "missing":
         return <Badge variant="destructive">Missing</Badge>
+      case "excused_absence":
+        return <Badge className="bg-blue-600">Excused</Badge>
       default:
         return <Badge variant="outline">Unknown</Badge>
     }
@@ -108,6 +110,14 @@ export function AttendancePanel({ session, students, onUpdate }: AttendancePanel
                   disabled={isLoading}
                 >
                   <X className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => markAttendance(student.user_id, "excused_absence")}
+                  disabled={isLoading}
+                >
+                  <FileCheck className="h-4 w-4" />
                 </Button>
               </div>
             </div>

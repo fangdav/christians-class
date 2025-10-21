@@ -383,7 +383,7 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
                                 <div className="font-semibold">{student.attendance_percentage.toFixed(1)}%</div>
                                 <div className="text-xs text-muted-foreground">
                                   {student.sessions_on_time} on time • {student.sessions_late} late •{" "}
-                                  {student.sessions_missing} missing
+                                  {student.sessions_missing} missing • {student.sessions_excused} excused
                                 </div>
                                 <div className="text-xs text-muted-foreground mt-1">
                                   {student.total_absence_minutes ?? 0} min absent •{" "}

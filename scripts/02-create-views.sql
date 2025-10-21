@@ -1,5 +1,9 @@
+-- Drop existing views first to allow column changes
+DROP VIEW IF EXISTS student_quarter_summary;
+DROP VIEW IF EXISTS student_session_summary;
+
 -- Create view for student session summary
-CREATE OR REPLACE VIEW student_session_summary AS
+CREATE VIEW student_session_summary AS
 SELECT 
   u.id AS user_id,
   u.full_name,
@@ -21,38 +25,40 @@ SELECT
     0
   ) AS total_checkout_minutes,
   COALESCE(ci.minutes_late, 0) + COALESCE(
-    (SELECT SUM(duration_minutes) 
-     FROM check_outs co 
-     WHERE co.user_id = u.id 
-     AND co.session_id = s.id 
-     AND co.duration_minutes IS NOT NULL), 
+    (SELECT SUM(duration_minutes)
+     FROM check_outs co
+     WHERE co.user_id = u.id
+     AND co.session_id = s.id
+     AND co.duration_minutes IS NOT NULL),
     0
   ) AS total_absence_minutes,
-  45 - (COALESCE(ci.minutes_late, 0) + COALESCE(
-    (SELECT SUM(duration_minutes) 
-     FROM check_outs co 
-     WHERE co.user_id = u.id 
-     AND co.session_id = s.id 
-     AND co.duration_minutes IS NOT NULL), 
+  -- Base time is 60 minutes, but 45 if student has any excused absences
+  (CASE WHEN ci.status = 'excused_absence' THEN 45 ELSE 60 END) - (COALESCE(ci.minutes_late, 0) + COALESCE(
+    (SELECT SUM(duration_minutes)
+     FROM check_outs co
+     WHERE co.user_id = u.id
+     AND co.session_id = s.id
+     AND co.duration_minutes IS NOT NULL),
     0
   )) AS time_remaining,
-  CASE 
+  CASE
+    -- Base time is 60 min (or 45 if excused), danger at 60/45, warning at 40/30
     WHEN (COALESCE(ci.minutes_late, 0) + COALESCE(
-      (SELECT SUM(duration_minutes) 
-       FROM check_outs co 
-       WHERE co.user_id = u.id 
-       AND co.session_id = s.id 
-       AND co.duration_minutes IS NOT NULL), 
+      (SELECT SUM(duration_minutes)
+       FROM check_outs co
+       WHERE co.user_id = u.id
+       AND co.session_id = s.id
+       AND co.duration_minutes IS NOT NULL),
       0
-    )) >= 45 THEN 'danger'
+    )) >= CASE WHEN ci.status = 'excused_absence' THEN 45 ELSE 60 END THEN 'danger'
     WHEN (COALESCE(ci.minutes_late, 0) + COALESCE(
-      (SELECT SUM(duration_minutes) 
-       FROM check_outs co 
-       WHERE co.user_id = u.id 
-       AND co.session_id = s.id 
-       AND co.duration_minutes IS NOT NULL), 
+      (SELECT SUM(duration_minutes)
+       FROM check_outs co
+       WHERE co.user_id = u.id
+       AND co.session_id = s.id
+       AND co.duration_minutes IS NOT NULL),
       0
-    )) >= 30 THEN 'warning'
+    )) >= CASE WHEN ci.status = 'excused_absence' THEN 30 ELSE 40 END THEN 'warning'
     ELSE 'good'
   END AS status,
   (SELECT COUNT(*) 
@@ -96,7 +102,7 @@ WHERE EXISTS (
 );
 
 -- Create view for student quarter summary
-CREATE OR REPLACE VIEW student_quarter_summary AS
+CREATE VIEW student_quarter_summary AS
 SELECT 
   u.id AS user_id,
   u.full_name,

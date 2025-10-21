@@ -63,13 +63,14 @@ SELECT
 
   -- Session counts
   COUNT(DISTINCT s.id) AS total_sessions_in_quarter,
-  COUNT(DISTINCT ci.session_id) AS sessions_attended,
+  -- sessions_attended excludes excused absences
+  COUNT(DISTINCT CASE WHEN ci.status IN ('on_time', 'late') THEN ci.session_id END) AS sessions_attended,
 
-  -- Attendance percentage
+  -- Attendance percentage (excludes excused absences from attended count)
   CASE
   WHEN COUNT(DISTINCT s.id) > 0 THEN
       ROUND(
-        (COUNT(DISTINCT ci.session_id)::numeric / COUNT(DISTINCT s.id)::numeric) * 100,
+        (COUNT(DISTINCT CASE WHEN ci.status IN ('on_time', 'late') THEN ci.session_id END)::numeric / COUNT(DISTINCT s.id)::numeric) * 100,
         1
       )
     ELSE 0
@@ -79,6 +80,7 @@ SELECT
   COUNT(DISTINCT CASE WHEN ci.status = 'on_time' THEN ci.session_id END) AS sessions_on_time,
   COUNT(DISTINCT CASE WHEN ci.status = 'late' THEN ci.session_id END) AS sessions_late,
   COUNT(DISTINCT CASE WHEN ci.status = 'missing' THEN ci.session_id END) AS sessions_missing,
+  COUNT(DISTINCT CASE WHEN ci.status = 'excused_absence' THEN ci.session_id END) AS sessions_excused,
 
   -- Total absence minutes
   COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) AS total_late_minutes,
@@ -107,8 +109,11 @@ SELECT
     0
   ) AS total_absence_minutes,
 
-  -- Time remaining (45 min per session * total sessions - total absence)
-  (45 * COUNT(DISTINCT s.id)) - (
+  -- Time remaining: 60 min per session base, or 45 if student has any excused absences
+  (CASE
+    WHEN COUNT(DISTINCT CASE WHEN ci.status = 'excused_absence' THEN ci.session_id END) > 0 THEN 45
+    ELSE 60
+   END * COUNT(DISTINCT s.id)) - (
     COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) + COALESCE(
       (SELECT SUM(duration_minutes)
        FROM check_outs co

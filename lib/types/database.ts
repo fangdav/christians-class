@@ -38,7 +38,7 @@ export type QuarterEnrollment = {
   created_at: string
 }
 
-export type CheckInStatus = "on_time" | "late" | "missing"
+export type CheckInStatus = "on_time" | "late" | "missing" | "excused_absence"
 
 export type CheckIn = {
   id: string
@@ -141,6 +141,7 @@ export type QuarterStudentAttendance = {
   sessions_on_time: number
   sessions_late: number
   sessions_missing: number
+  sessions_excused: number
   total_late_minutes: number
   total_checkout_minutes: number
   total_absence_minutes: number
