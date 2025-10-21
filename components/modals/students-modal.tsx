@@ -3,8 +3,10 @@
 import { useEffect, useState } from "react"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
-import type { User } from "@/lib/types/database"
+import type { User, Quarter } from "@/lib/types/database"
 import { Plus, UserIcon, Pencil, Trash2 } from "lucide-react"
 import { CreateStudentModal } from "./create-student-modal"
 import { EditStudentModal } from "./edit-student-modal"
@@ -26,6 +28,8 @@ interface StudentsModalProps {
 
 export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
   const [students, setStudents] = useState<User[]>([])
+  const [quarters, setQuarters] = useState<Quarter[]>([])
+  const [selectedQuarterId, setSelectedQuarterId] = useState<string>("all")
   const [isLoading, setIsLoading] = useState(true)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
@@ -36,23 +40,71 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
 
   useEffect(() => {
     if (open) {
+      fetchQuarters()
       fetchStudents()
     }
   }, [open])
+
+  useEffect(() => {
+    if (open) {
+      fetchStudents()
+    }
+  }, [selectedQuarterId])
+
+  const fetchQuarters = async () => {
+    const supabase = getSupabaseBrowserClient()
+
+    const { data } = await supabase
+      .from("quarters")
+      .select("*")
+      .is("deleted_at", null)
+      .order("start_date", { ascending: false })
+
+    if (data) {
+      setQuarters(data)
+    }
+  }
 
   const fetchStudents = async () => {
     setIsLoading(true)
     const supabase = getSupabaseBrowserClient()
 
-    const { data, error } = await supabase
-      .from("users")
-      .select("*")
-      .is("deleted_at", null)
-      .order("full_name", { ascending: true })
+    if (selectedQuarterId === "all") {
+      // Fetch all students
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .is("deleted_at", null)
+        .order("full_name", { ascending: true })
 
-    if (!error && data) {
-      setStudents(data)
+      if (!error && data) {
+        setStudents(data)
+      }
+    } else {
+      // Fetch students enrolled in selected quarter
+      const { data: enrollments } = await supabase
+        .from("quarter_enrollments")
+        .select("user_id")
+        .eq("quarter_id", selectedQuarterId)
+
+      if (enrollments && enrollments.length > 0) {
+        const userIds = enrollments.map((e) => e.user_id)
+
+        const { data, error } = await supabase
+          .from("users")
+          .select("*")
+          .in("id", userIds)
+          .is("deleted_at", null)
+          .order("full_name", { ascending: true })
+
+        if (!error && data) {
+          setStudents(data)
+        }
+      } else {
+        setStudents([])
+      }
     }
+
     setIsLoading(false)
   }
 
@@ -99,12 +151,29 @@ export function StudentsModal({ open, onOpenChange }: StudentsModalProps) {
             <DialogDescription>Manage student roster and view profiles.</DialogDescription>
           </DialogHeader>
           <div className="py-4">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-sm font-medium">All Students ({students.length})</h3>
-              <Button size="sm" onClick={() => setShowCreateModal(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Add Student
-              </Button>
+            <div className="flex justify-between items-center mb-4 gap-3">
+              <h3 className="text-sm font-medium">
+                {selectedQuarterId === "all" ? "All Students" : "Enrolled Students"} ({students.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                <Select value={selectedQuarterId} onValueChange={setSelectedQuarterId}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="All Quarters" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Quarters</SelectItem>
+                    {quarters.map((quarter) => (
+                      <SelectItem key={quarter.id} value={quarter.id}>
+                        {quarter.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Button size="sm" onClick={() => setShowCreateModal(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Student
+                </Button>
+              </div>
             </div>
             {isLoading ? (
               <div className="text-center py-8 text-muted-foreground">Loading...</div>
