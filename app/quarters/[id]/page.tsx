@@ -11,7 +11,12 @@ export default async function QuarterDetailPage({ params }: { params: Promise<{ 
   const { id } = await params
   const supabase = await getSupabaseServerClient()
 
-  const { data: quarter } = await supabase.from("quarters").select("*").eq("id", id).single()
+  const { data: quarter } = await supabase
+    .from("quarters")
+    .select("*")
+    .eq("id", id)
+    .is("deleted_at", null)
+    .single()
 
   const { data: sessions } = await supabase
     .from("sessions")

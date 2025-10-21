@@ -10,6 +10,7 @@ export default async function QuartersPage() {
   const { data: quarters, error } = await supabase
     .from("quarters")
     .select("*")
+    .is("deleted_at", null)
     .order("start_date", { ascending: false })
 
   if (error) {

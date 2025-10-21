@@ -78,6 +78,44 @@ SELECT
   -- Total absence minutes
   SUM(COALESCE(ci.minutes_late, 0)) AS total_late_minutes,
 
+  -- Total checkout minutes across all sessions
+  COALESCE(
+    (SELECT SUM(duration_minutes)
+     FROM check_outs co
+     JOIN sessions s2 ON co.session_id = s2.id
+     WHERE co.user_id = u.id
+     AND s2.quarter_id = q.id
+     AND s2.deleted_at IS NULL
+     AND co.duration_minutes IS NOT NULL),
+    0
+  ) AS total_checkout_minutes,
+
+  -- Total absence (late + checkout)
+  SUM(COALESCE(ci.minutes_late, 0)) + COALESCE(
+    (SELECT SUM(duration_minutes)
+     FROM check_outs co
+     JOIN sessions s2 ON co.session_id = s2.id
+     WHERE co.user_id = u.id
+     AND s2.quarter_id = q.id
+     AND s2.deleted_at IS NULL
+     AND co.duration_minutes IS NOT NULL),
+    0
+  ) AS total_absence_minutes,
+
+  -- Time remaining (45 min per session * total sessions - total absence)
+  (45 * COUNT(DISTINCT s.id)) - (
+    SUM(COALESCE(ci.minutes_late, 0)) + COALESCE(
+      (SELECT SUM(duration_minutes)
+       FROM check_outs co
+       JOIN sessions s2 ON co.session_id = s2.id
+       WHERE co.user_id = u.id
+       AND s2.quarter_id = q.id
+       AND s2.deleted_at IS NULL
+       AND co.duration_minutes IS NOT NULL),
+      0
+    )
+  ) AS time_remaining,
+
   -- Status indicator
   CASE
     WHEN COUNT(DISTINCT s.id) = 0 THEN 'unknown'

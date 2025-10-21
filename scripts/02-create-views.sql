@@ -66,9 +66,25 @@ SELECT
        WHEN 'high' THEN 5
      END
    )
-   FROM contributions c 
-   WHERE c.user_id = u.id 
-   AND c.session_id = s.id) AS average_contribution_quality
+   FROM contributions c
+   WHERE c.user_id = u.id
+   AND c.session_id = s.id) AS average_contribution_quality,
+  -- Check if currently checked out (has active checkout without return)
+  EXISTS (
+    SELECT 1
+    FROM check_outs co
+    WHERE co.user_id = u.id
+    AND co.session_id = s.id
+    AND co.check_in_time IS NULL
+  ) AS is_currently_checked_out,
+  -- Get the checkout time if currently checked out
+  (SELECT check_out_time
+   FROM check_outs co
+   WHERE co.user_id = u.id
+   AND co.session_id = s.id
+   AND co.check_in_time IS NULL
+   ORDER BY check_out_time DESC
+   LIMIT 1) AS current_checkout_time
 FROM users u
 CROSS JOIN sessions s
 JOIN quarters q ON s.quarter_id = q.id

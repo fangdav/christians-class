@@ -43,7 +43,11 @@ export function CreateSessionModal({ open, onOpenChange }: CreateSessionModalPro
 
   const fetchQuarters = async () => {
     const supabase = getSupabaseBrowserClient()
-    const { data } = await supabase.from("quarters").select("*").order("start_date", { ascending: false })
+    const { data } = await supabase
+      .from("quarters")
+      .select("*")
+      .is("deleted_at", null)
+      .order("start_date", { ascending: false })
 
     if (data) {
       setQuarters(data)

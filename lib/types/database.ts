@@ -94,6 +94,8 @@ export type StudentSessionSummary = {
   status: AttendanceStatus
   contribution_count: number
   average_contribution_quality: number | null
+  is_currently_checked_out: boolean
+  current_checkout_time: string | null
 }
 
 export type StudentQuarterSummary = {
@@ -140,6 +142,9 @@ export type QuarterStudentAttendance = {
   sessions_late: number
   sessions_missing: number
   total_late_minutes: number
+  total_checkout_minutes: number
+  total_absence_minutes: number
+  time_remaining: number
   attendance_status: AttendanceStatus | "unknown"
 }
 

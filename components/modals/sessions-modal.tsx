@@ -33,6 +33,7 @@ export function SessionsModal({ open, onOpenChange }: SessionsModalProps) {
     const { data, error } = await supabase
       .from("sessions")
       .select("*, quarter:quarters(*)")
+      .is("deleted_at", null)
       .order("session_date", { ascending: false })
 
     if (!error && data) {

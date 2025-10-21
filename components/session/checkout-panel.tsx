@@ -95,6 +95,14 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       <div className="space-y-2">
         {students.map((student) => {
           const status = getAbsenceStatus(student)
+          const isCheckedOut = student.is_currently_checked_out
+          const checkoutTime = student.current_checkout_time
+            ? new Date(student.current_checkout_time).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })
+            : null
+
           return (
             <div
               key={student.user_id}
@@ -104,9 +112,21 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
                 <p className="font-medium">{student.full_name}</p>
                 <div className="flex items-center gap-2 mt-1">
                   <Badge className={status.color}>{status.label}</Badge>
+                  {isCheckedOut ? (
+                    <Badge variant="outline" className="bg-orange-100 text-orange-800 border-orange-300">
+                      Checked Out
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-blue-100 text-blue-800 border-blue-300">
+                      In Session
+                    </Badge>
+                  )}
                   <span className="text-sm text-muted-foreground">
                     {student.total_absence_minutes} min absent • {student.time_remaining} min remaining
                   </span>
+                  {isCheckedOut && checkoutTime && (
+                    <span className="text-sm text-muted-foreground">• Out since {checkoutTime}</span>
+                  )}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -114,12 +134,17 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
                   size="sm"
                   variant="outline"
                   onClick={() => handleCheckOut(student.user_id)}
-                  disabled={isLoading}
+                  disabled={isLoading || isCheckedOut}
                 >
                   <LogOut className="h-4 w-4 mr-1" />
                   Check Out
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleCheckIn(student.user_id)} disabled={isLoading}>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleCheckIn(student.user_id)}
+                  disabled={isLoading || !isCheckedOut}
+                >
                   <LogIn className="h-4 w-4 mr-1" />
                   Return
                 </Button>

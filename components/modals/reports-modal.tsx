@@ -228,31 +228,46 @@ export function ReportsModal({ open, onOpenChange }: ReportsModalProps) {
                     </p>
                   ) : (
                     <div className="space-y-3">
-                      {attendanceData.map((student) => (
-                        <div
-                          key={student.user_id}
-                          className="flex items-center justify-between p-3 border border-border rounded-lg"
-                        >
-                          <div className="flex-1">
-                            <h4 className="font-medium">{student.full_name}</h4>
-                            <p className="text-sm text-muted-foreground">
-                              {student.sessions_attended} / {student.total_sessions_in_quarter} sessions attended
-                            </p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <div className="font-semibold">{student.attendance_percentage.toFixed(1)}%</div>
-                              <div className="text-xs text-muted-foreground">
-                                {student.sessions_on_time} on time • {student.sessions_late} late •{" "}
-                                {student.sessions_missing} missing
-                              </div>
+                      {attendanceData.map((student) => {
+                        const timeRemainingStatus =
+                          student.time_remaining > 30 * student.total_sessions_in_quarter
+                            ? "text-green-600"
+                            : student.time_remaining > 15 * student.total_sessions_in_quarter
+                              ? "text-yellow-600"
+                              : "text-red-600"
+
+                        return (
+                          <div
+                            key={student.user_id}
+                            className="flex items-center justify-between p-3 border border-border rounded-lg"
+                          >
+                            <div className="flex-1">
+                              <h4 className="font-medium">{student.full_name}</h4>
+                              <p className="text-sm text-muted-foreground">
+                                {student.sessions_attended} / {student.total_sessions_in_quarter} sessions attended
+                              </p>
                             </div>
-                            <Badge className={getAttendanceStatusColor(student.attendance_status)}>
-                              {getAttendanceStatusLabel(student.attendance_status)}
-                            </Badge>
+                            <div className="flex items-center gap-3">
+                              <div className="text-right">
+                                <div className="font-semibold">{student.attendance_percentage.toFixed(1)}%</div>
+                                <div className="text-xs text-muted-foreground">
+                                  {student.sessions_on_time} on time • {student.sessions_late} late •{" "}
+                                  {student.sessions_missing} missing
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-1">
+                                  {student.total_absence_minutes} min absent •{" "}
+                                  <span className={`font-medium ${timeRemainingStatus}`}>
+                                    {student.time_remaining} min remaining
+                                  </span>
+                                </div>
+                              </div>
+                              <Badge className={getAttendanceStatusColor(student.attendance_status)}>
+                                {getAttendanceStatusLabel(student.attendance_status)}
+                              </Badge>
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </CardContent>
