@@ -109,11 +109,11 @@ SELECT
     0
   ) AS total_absence_minutes,
 
-  -- Time remaining: 60 min per session base, or 45 if student has any excused absences
+  -- Time remaining: 60 min total for entire quarter, or 45 if student has any excused absences
   (CASE
     WHEN COUNT(DISTINCT CASE WHEN ci.status = 'excused_absence' THEN ci.session_id END) > 0 THEN 45
     ELSE 60
-   END * COUNT(DISTINCT s.id)) - (
+   END) - (
     COALESCE(SUM(COALESCE(ci.minutes_late, 0)), 0) + COALESCE(
       (SELECT SUM(duration_minutes)
        FROM check_outs co
