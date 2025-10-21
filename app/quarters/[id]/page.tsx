@@ -4,8 +4,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import Link from "next/link"
 import { ArrowLeft, Calendar, Users } from "lucide-react"
 import { format } from "date-fns"
-import { SessionsList } from "@/components/sessions/sessions-list"
-import { CreateSessionButton } from "@/components/sessions/create-session-button"
+import { SessionsList } from "@/components/session/sessions-list"
+import { CreateSessionButton } from "@/components/session/create-session-button"
 
 export default async function QuarterDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
