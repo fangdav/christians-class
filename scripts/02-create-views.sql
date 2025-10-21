@@ -95,11 +95,14 @@ FROM users u
 CROSS JOIN sessions s
 JOIN quarters q ON s.quarter_id = q.id
 LEFT JOIN check_ins ci ON ci.user_id = u.id AND ci.session_id = s.id
-WHERE EXISTS (
-  SELECT 1 FROM quarter_enrollments qe 
-  WHERE qe.user_id = u.id 
-  AND qe.quarter_id = q.id
-);
+WHERE u.deleted_at IS NULL
+  AND s.deleted_at IS NULL
+  AND q.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM quarter_enrollments qe
+    WHERE qe.user_id = u.id
+    AND qe.quarter_id = q.id
+  );
 
 -- Create view for student quarter summary
 CREATE VIEW student_quarter_summary AS
@@ -189,8 +192,10 @@ SELECT
   END AS overall_status
 FROM users u
 CROSS JOIN quarters q
-WHERE EXISTS (
-  SELECT 1 FROM quarter_enrollments qe 
-  WHERE qe.user_id = u.id 
-  AND qe.quarter_id = q.id
-);
+WHERE u.deleted_at IS NULL
+  AND q.deleted_at IS NULL
+  AND EXISTS (
+    SELECT 1 FROM quarter_enrollments qe
+    WHERE qe.user_id = u.id
+    AND qe.quarter_id = q.id
+  );
