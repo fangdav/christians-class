@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
@@ -13,8 +13,60 @@ interface CheckOutPanelProps {
   onUpdate: () => void | Promise<void>
 }
 
+interface CheckoutState {
+  isCheckedOut: boolean
+  checkoutTime: string | null
+}
+
 export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [checkoutStates, setCheckoutStates] = useState<Record<string, CheckoutState>>({})
+
+  // Fetch checkout states directly from database
+  const fetchCheckoutStates = async () => {
+    if (students.length === 0) return
+
+    const supabase = getSupabaseBrowserClient()
+    const userIds = students.map((s) => s.user_id)
+
+    // Query for active checkouts (check_in_time IS NULL)
+    const { data: activeCheckouts } = await supabase
+      .from("check_outs")
+      .select("user_id, check_out_time")
+      .eq("session_id", session.id)
+      .in("user_id", userIds)
+      .is("check_in_time", null)
+
+    // Build state map
+    const states: Record<string, CheckoutState> = {}
+
+    // Initialize all students as not checked out
+    students.forEach((student) => {
+      states[student.user_id] = {
+        isCheckedOut: false,
+        checkoutTime: null,
+      }
+    })
+
+    // Mark students with active checkouts
+    if (activeCheckouts) {
+      activeCheckouts.forEach((checkout) => {
+        states[checkout.user_id] = {
+          isCheckedOut: true,
+          checkoutTime: checkout.check_out_time,
+        }
+      })
+    }
+
+    setCheckoutStates(states)
+  }
+
+  // Load checkout states when component mounts or students change
+  useEffect(() => {
+    fetchCheckoutStates()
+    // fetchCheckoutStates is stable and doesn't need to be in deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [students, session.id])
 
   const handleCheckOut = async (userId: string) => {
     setIsLoading(true)
@@ -28,8 +80,11 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       })
 
       if (error) throw error
-      // Add delay to allow database view to update, then refresh
-      await new Promise(resolve => setTimeout(resolve, 150))
+
+      // Refresh checkout states from database
+      await fetchCheckoutStates()
+
+      // Also refresh parent view data for absence minutes
       await onUpdate()
     } catch (error) {
       console.error("[v0] Error checking out:", error)
@@ -57,23 +112,22 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
 
       if (checkOuts && checkOuts.length > 0) {
         const checkOut = checkOuts[0]
-        const checkInTime = new Date()
-        const checkOutTime = new Date(checkOut.check_out_time)
-        const durationMinutes = Math.floor((checkInTime.getTime() - checkOutTime.getTime()) / 60000)
 
+        // Update check_in_time; duration_minutes will be auto-calculated by database trigger
         const { error: updateError } = await supabase
           .from("check_outs")
           .update({
-            check_in_time: checkInTime.toISOString(),
-            duration_minutes: durationMinutes,
+            check_in_time: new Date().toISOString(),
           })
           .eq("id", checkOut.id)
 
         if (updateError) throw updateError
       }
 
-      // Add delay to allow database view to update, then refresh
-      await new Promise(resolve => setTimeout(resolve, 150))
+      // Refresh checkout states from database
+      await fetchCheckoutStates()
+
+      // Also refresh parent view data for absence minutes
       await onUpdate()
     } catch (error) {
       console.error("[v0] Error checking in:", error)
@@ -99,9 +153,14 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
       <div className="space-y-2">
         {students.map((student) => {
           const status = getAbsenceStatus(student)
-          const isCheckedOut = student.is_currently_checked_out
-          const checkoutTime = student.current_checkout_time
-            ? new Date(student.current_checkout_time).toLocaleTimeString([], {
+          // Get checkout state from direct database query instead of view
+          const checkoutState = checkoutStates[student.user_id] || {
+            isCheckedOut: false,
+            checkoutTime: null,
+          }
+          const isCheckedOut = checkoutState.isCheckedOut
+          const checkoutTime = checkoutState.checkoutTime
+            ? new Date(checkoutState.checkoutTime).toLocaleTimeString([], {
                 hour: "2-digit",
                 minute: "2-digit",
               })
