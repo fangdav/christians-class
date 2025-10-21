@@ -11,7 +11,7 @@ import { Plus } from "lucide-react"
 interface ContributionsPanelProps {
   session: Session
   students: StudentSessionSummary[]
-  onUpdate: () => void
+  onUpdate: () => void | Promise<void>
 }
 
 export function ContributionsPanel({ session, students, onUpdate }: ContributionsPanelProps) {
@@ -35,7 +35,8 @@ export function ContributionsPanel({ session, students, onUpdate }: Contribution
       if (error) throw error
       setSelectedStudent("")
       setQuality("medium")
-      onUpdate()
+      // Wait for update to complete before re-enabling buttons
+      await onUpdate()
     } catch (error) {
       console.error("[v0] Error adding contribution:", error)
     } finally {

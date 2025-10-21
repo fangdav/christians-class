@@ -10,7 +10,7 @@ import { Check, X, Clock } from "lucide-react"
 interface AttendancePanelProps {
   session: Session
   students: StudentSessionSummary[]
-  onUpdate: () => void
+  onUpdate: () => void | Promise<void>
 }
 
 export function AttendancePanel({ session, students, onUpdate }: AttendancePanelProps) {
@@ -41,7 +41,8 @@ export function AttendancePanel({ session, students, onUpdate }: AttendancePanel
       )
 
       if (error) throw error
-      onUpdate()
+      // Wait for update to complete before re-enabling buttons
+      await onUpdate()
     } catch (error) {
       console.error("[v0] Error marking attendance:", error)
     } finally {
