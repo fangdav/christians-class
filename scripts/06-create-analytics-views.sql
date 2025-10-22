@@ -1,58 +1,12 @@
 -- Analytics Views for Quarter-Specific Reporting
 -- These views power the analytics dashboard
 
--- Drop existing views first to allow column reordering
+-- Drop existing views first (in reverse dependency order)
+DROP VIEW IF EXISTS quarter_overview_stats;
 DROP VIEW IF EXISTS quarter_student_contributions;
 DROP VIEW IF EXISTS quarter_student_attendance;
-DROP VIEW IF EXISTS quarter_overview_stats;
 
--- View: Quarter overview statistics
-CREATE VIEW quarter_overview_stats AS
-SELECT
-  q.id AS quarter_id,
-  q.name AS quarter_name,
-  q.start_date,
-  q.end_date,
-
-  -- Student counts
-  COUNT(DISTINCT qe.user_id) AS total_students,
-
-  -- Session counts
-  COUNT(DISTINCT s.id) AS total_sessions,
-  COUNT(DISTINCT CASE WHEN s.is_completed = true THEN s.id END) AS completed_sessions,
-
-  -- Overall attendance rate (only counting on_time and late as attended)
-  CASE
-    WHEN COUNT(DISTINCT s.id) > 0 THEN
-      ROUND(
-        (COUNT(CASE WHEN ci.status IN ('on_time', 'late') THEN 1 END)::numeric /
-         (COUNT(DISTINCT s.id) * GREATEST(COUNT(DISTINCT qe.user_id), 1))::numeric) * 100,
-        1
-      )
-    ELSE 0
-  END AS avg_attendance_rate,
-
-  -- Average contribution rate
-  CASE
-    WHEN COUNT(DISTINCT s.id) > 0 AND COUNT(DISTINCT qe.user_id) > 0 THEN
-      ROUND(
-        COUNT(DISTINCT c.id)::numeric /
-        (COUNT(DISTINCT s.id) * COUNT(DISTINCT qe.user_id))::numeric,
-        2
-      )
-    ELSE 0
-  END AS avg_contributions_per_student_session
-
-FROM quarters q
-LEFT JOIN quarter_enrollments qe ON q.id = qe.quarter_id
-INNER JOIN users u ON qe.user_id = u.id AND u.deleted_at IS NULL
-LEFT JOIN sessions s ON q.id = s.quarter_id AND s.deleted_at IS NULL
-LEFT JOIN check_ins ci ON u.id = ci.user_id AND s.id = ci.session_id
-LEFT JOIN contributions c ON u.id = c.user_id AND s.id = c.session_id
-WHERE q.deleted_at IS NULL
-GROUP BY q.id, q.name, q.start_date, q.end_date;
-
--- View: Student attendance by quarter
+-- View: Student attendance by quarter (created first, used by quarter_overview_stats)
 CREATE VIEW quarter_student_attendance AS
 SELECT
   q.id AS quarter_id,
@@ -194,7 +148,55 @@ WHERE q.deleted_at IS NULL
   AND qe.id IS NOT NULL  -- Only students enrolled in this quarter
 GROUP BY q.id, u.id, u.full_name, u.email, u.student_id;
 
+-- View: Quarter overview statistics (created last, depends on quarter_student_attendance)
+CREATE VIEW quarter_overview_stats AS
+SELECT
+  q.id AS quarter_id,
+  q.name AS quarter_name,
+  q.start_date,
+  q.end_date,
+
+  -- Student counts
+  COUNT(DISTINCT qe.user_id) AS total_students,
+
+  -- Session counts
+  COUNT(DISTINCT s.id) AS total_sessions,
+  COUNT(DISTINCT CASE WHEN s.is_completed = true THEN s.id END) AS completed_sessions,
+
+  -- Overall attendance rate (average sessions attended / total sessions)
+  CASE
+    WHEN COUNT(DISTINCT s.id) > 0 AND COUNT(DISTINCT qe.user_id) > 0 THEN
+      ROUND(
+        (SELECT COALESCE(SUM(sessions_attended), 0)
+         FROM quarter_student_attendance
+         WHERE quarter_id = q.id)::numeric /
+        (COUNT(DISTINCT s.id) * COUNT(DISTINCT qe.user_id))::numeric * 100,
+        1
+      )
+    ELSE 0
+  END AS avg_attendance_rate,
+
+  -- Average contribution rate
+  CASE
+    WHEN COUNT(DISTINCT s.id) > 0 AND COUNT(DISTINCT qe.user_id) > 0 THEN
+      ROUND(
+        COUNT(DISTINCT c.id)::numeric /
+        (COUNT(DISTINCT s.id) * COUNT(DISTINCT qe.user_id))::numeric,
+        2
+      )
+    ELSE 0
+  END AS avg_contributions_per_student_session
+
+FROM quarters q
+LEFT JOIN quarter_enrollments qe ON q.id = qe.quarter_id
+INNER JOIN users u ON qe.user_id = u.id AND u.deleted_at IS NULL
+LEFT JOIN sessions s ON q.id = s.quarter_id AND s.deleted_at IS NULL
+LEFT JOIN check_ins ci ON u.id = ci.user_id AND s.id = ci.session_id
+LEFT JOIN contributions c ON u.id = c.user_id AND s.id = c.session_id
+WHERE q.deleted_at IS NULL
+GROUP BY q.id, q.name, q.start_date, q.end_date;
+
 -- Add comments for documentation
-COMMENT ON VIEW quarter_overview_stats IS 'Aggregated statistics for each quarter including student counts, session counts, and overall rates';
 COMMENT ON VIEW quarter_student_attendance IS 'Per-student attendance statistics within each quarter';
 COMMENT ON VIEW quarter_student_contributions IS 'Per-student contribution statistics within each quarter';
+COMMENT ON VIEW quarter_overview_stats IS 'Aggregated statistics for each quarter including student counts, session counts, and overall rates';
