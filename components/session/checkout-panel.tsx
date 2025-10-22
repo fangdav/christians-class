@@ -1,11 +1,12 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Session, StudentSessionSummary } from "@/lib/types/database"
-import { LogOut, LogIn } from "lucide-react"
+import { LogOut, LogIn, Search } from "lucide-react"
 
 interface CheckOutPanelProps {
   session: Session
@@ -21,6 +22,7 @@ interface CheckoutState {
 export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [checkoutStates, setCheckoutStates] = useState<Record<string, CheckoutState>>({})
+  const [searchTerm, setSearchTerm] = useState("")
 
   // Fetch checkout states directly from database
   const fetchCheckoutStates = async () => {
@@ -143,15 +145,32 @@ export function CheckOutPanel({ session, students, onUpdate }: CheckOutPanelProp
     return { color: "bg-green-600", label: "Good" }
   }
 
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students
+    return students.filter((student) =>
+      student.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [students, searchTerm])
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Check-Out Tracking</h3>
-        <p className="text-sm text-muted-foreground">Track students leaving and returning</p>
+        <p className="text-sm text-muted-foreground">{filteredStudents.length} students</p>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <div className="space-y-2">
-        {students.map((student) => {
+        {filteredStudents.map((student) => {
           const status = getAbsenceStatus(student)
           // Get checkout state from direct database query instead of view
           const checkoutState = checkoutStates[student.user_id] || {

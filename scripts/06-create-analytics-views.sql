@@ -25,7 +25,7 @@ SELECT
   CASE
     WHEN COUNT(DISTINCT s.id) > 0 THEN
       ROUND(
-        (COUNT(DISTINCT CASE WHEN ci.status IN ('on_time', 'late') THEN ci.session_id END)::numeric /
+        (COUNT(CASE WHEN ci.status IN ('on_time', 'late') THEN 1 END)::numeric /
          (COUNT(DISTINCT s.id) * GREATEST(COUNT(DISTINCT qe.user_id), 1))::numeric) * 100,
         1
       )
