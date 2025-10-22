@@ -16,34 +16,34 @@ Improv GSB helps Christian (and other TA/Instructors ) manage class sessions, tr
 ### Installation
 
 1. **Clone the repository**
-   ```bash
+   \`\`\`bash
    git clone <repository-url>
    cd christians-class
-   ```
+   \`\`\`
 
 2. **Install dependencies**
-   ```bash
+   \`\`\`bash
    npm install
-   ```
+   \`\`\`
 
 3. **Set up environment variables**
 
    Create a `.env.local` file:
-   ```env
+   \`\`\`env
    SUPABASE_NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
    SUPABASE_NEXT_PUBLIC_SUPABASE_ANON_KEY=your_supabase_anon_key
-   ```
+   \`\`\`
 
    Or use Vercel CLI:
-   ```bash
+   \`\`\`bash
    vercel env pull .env.local
-   ```
+   \`\`\`
 
 4. **Run database migrations**
 
    Execute the following SQL scripts in your Supabase SQL Editor in order:
 
-   ```
+   \`\`\`
    scripts/01-create-tables.sql       # Create core tables
    scripts/02-create-views.sql        # Create database views
    scripts/03-enable-rls.sql          # Enable row-level security (optional)
@@ -52,12 +52,12 @@ Improv GSB helps Christian (and other TA/Instructors ) manage class sessions, tr
    scripts/06-create-analytics-views.sql  # Create analytics views
    scripts/07-enforce-checkout-constraints.sql  # Add checkout constraints
    scripts/08-add-excused-absence.sql # Add excused absence status
-   ```
+   \`\`\`
 
 5. **Run the development server**
-   ```bash
+   \`\`\`bash
    npm run dev
-   ```
+   \`\`\`
 
    Open [http://localhost:3000](http://localhost:3000)
 
