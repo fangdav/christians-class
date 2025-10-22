@@ -18,7 +18,6 @@ export default function HomePage() {
       <div className="border-b border-border bg-card">
         <div className="container mx-auto px-6 py-4">
           <h1 className="text-2xl font-semibold">Class Attendance Dashboard</h1>
-          <p className="text-sm text-muted-foreground mt-1">Admin Portal</p>
         </div>
       </div>
 
