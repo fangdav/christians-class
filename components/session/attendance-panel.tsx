@@ -1,11 +1,12 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Session, StudentSessionSummary } from "@/lib/types/database"
-import { Check, X, Clock, FileCheck } from "lucide-react"
+import { Check, X, Clock, FileCheck, Search } from "lucide-react"
 
 interface AttendancePanelProps {
   session: Session
@@ -15,6 +16,7 @@ interface AttendancePanelProps {
 
 export function AttendancePanel({ session, students, onUpdate }: AttendancePanelProps) {
   const [isLoading, setIsLoading] = useState(false)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const markAttendance = async (userId: string, status: "on_time" | "late" | "missing" | "excused_absence") => {
     setIsLoading(true)
@@ -67,15 +69,32 @@ export function AttendancePanel({ session, students, onUpdate }: AttendancePanel
     }
   }
 
+  const filteredStudents = useMemo(() => {
+    if (!searchTerm) return students
+    return students.filter((student) =>
+      student.full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [students, searchTerm])
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Mark Attendance</h3>
-        <p className="text-sm text-muted-foreground">{students.length} students</p>
+        <p className="text-sm text-muted-foreground">{filteredStudents.length} students</p>
+      </div>
+
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Search by name..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9"
+        />
       </div>
 
       <div className="space-y-2">
-        {students.map((student) => (
+        {filteredStudents.map((student) => (
           <div key={student.user_id} className="flex items-center justify-between p-3 border border-border rounded-lg">
             <div className="flex-1">
               <p className="font-medium">{student.full_name}</p>

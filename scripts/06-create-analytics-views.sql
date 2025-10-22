@@ -21,11 +21,11 @@ SELECT
   COUNT(DISTINCT s.id) AS total_sessions,
   COUNT(DISTINCT CASE WHEN s.is_completed = true THEN s.id END) AS completed_sessions,
 
-  -- Overall attendance rate (sessions with check-ins / total sessions)
+  -- Overall attendance rate (only counting on_time and late as attended)
   CASE
     WHEN COUNT(DISTINCT s.id) > 0 THEN
       ROUND(
-        (COUNT(DISTINCT ci.session_id)::numeric /
+        (COUNT(DISTINCT CASE WHEN ci.status IN ('on_time', 'late') THEN ci.session_id END)::numeric /
          (COUNT(DISTINCT s.id) * GREATEST(COUNT(DISTINCT qe.user_id), 1))::numeric) * 100,
         1
       )

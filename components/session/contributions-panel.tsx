@@ -1,12 +1,13 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { getSupabaseBrowserClient } from "@/lib/supabase/client"
 import type { Session, StudentSessionSummary } from "@/lib/types/database"
-import { Plus } from "lucide-react"
+import { Plus, Search } from "lucide-react"
 
 interface ContributionsPanelProps {
   session: Session
@@ -18,6 +19,7 @@ export function ContributionsPanel({ session, students, onUpdate }: Contribution
   const [selectedStudent, setSelectedStudent] = useState<string>("")
   const [quality, setQuality] = useState<"low" | "medium" | "high">("medium")
   const [isLoading, setIsLoading] = useState(false)
+  const [studentSearch, setStudentSearch] = useState("")
 
   const addContribution = async () => {
     if (!selectedStudent) return
@@ -57,41 +59,65 @@ export function ContributionsPanel({ session, students, onUpdate }: Contribution
     }
   }
 
+  const filteredStudents = useMemo(() => {
+    if (!studentSearch) return students
+    return students.filter((student) =>
+      student.full_name.toLowerCase().includes(studentSearch.toLowerCase())
+    )
+  }, [students, studentSearch])
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">Track Contributions</h3>
       </div>
 
-      <div className="flex gap-2 p-4 border border-border rounded-lg">
-        <Select value={selectedStudent} onValueChange={setSelectedStudent}>
-          <SelectTrigger className="flex-1">
-            <SelectValue placeholder="Select student" />
-          </SelectTrigger>
-          <SelectContent>
-            {students.map((student) => (
-              <SelectItem key={student.user_id} value={student.user_id}>
-                {student.full_name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+      <div className="space-y-2 p-4 border border-border rounded-lg">
+        <div className="flex gap-2">
+          <div className="flex-1 space-y-2">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search students..."
+                value={studentSearch}
+                onChange={(e) => setStudentSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <Select value={selectedStudent} onValueChange={setSelectedStudent}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select student" />
+              </SelectTrigger>
+              <SelectContent>
+                {filteredStudents.length === 0 ? (
+                  <div className="text-sm text-muted-foreground text-center py-2">No students found</div>
+                ) : (
+                  filteredStudents.map((student) => (
+                    <SelectItem key={student.user_id} value={student.user_id}>
+                      {student.full_name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
 
-        <Select value={quality} onValueChange={(v) => setQuality(v as "low" | "medium" | "high")}>
-          <SelectTrigger className="w-[140px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="low">Low Quality</SelectItem>
-            <SelectItem value="medium">Medium Quality</SelectItem>
-            <SelectItem value="high">High Quality</SelectItem>
-          </SelectContent>
-        </Select>
+          <Select value={quality} onValueChange={(v) => setQuality(v as "low" | "medium" | "high")}>
+            <SelectTrigger className="w-[140px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="low">Low Quality</SelectItem>
+              <SelectItem value="medium">Medium Quality</SelectItem>
+              <SelectItem value="high">High Quality</SelectItem>
+            </SelectContent>
+          </Select>
 
-        <Button onClick={addContribution} disabled={!selectedStudent || isLoading}>
-          <Plus className="h-4 w-4 mr-1" />
-          Add
-        </Button>
+          <Button onClick={addContribution} disabled={!selectedStudent || isLoading}>
+            <Plus className="h-4 w-4 mr-1" />
+            Add
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-2">
